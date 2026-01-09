@@ -49,13 +49,18 @@ Apply them using:
 
 ```bash
 # Apply backend ConfigMap
-kubectl apply -f config/backend-config.yaml -n platform-dev
+kubectl apply -f config/backend-config-dev.yaml -n platform-dev
 
 # Apply PostgreSQL Secret
-kubectl apply -f secrets/postgres-secret.yaml -n platform-dev
+kubectl apply -f config/postgres-secret.yaml -n platform-dev
 ```
 
 ### Step 4: Build Docker Images
+
+Configure your shell to use the Minikube Docker daemon so you can build images directly inside Minikube:
+```bash
+eval $(minikube docker-env)
+```
 
 ```bash
 # Build backend image
@@ -287,7 +292,6 @@ kubernetes-demo/
 │   ├── database/        # PostgreSQL resources and network policies
 │   └── namespaces/      # Namespace definitions
 ├── config/               # ConfigMaps (gitignored)
-├── secrets/              # Secrets (gitignored)
 ├── apply-network-policies.sh  # Script to apply all network policies
 └── README.md
 ```
