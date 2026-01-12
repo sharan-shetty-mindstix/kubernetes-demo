@@ -16,6 +16,29 @@ This project demonstrates a complete Kubernetes setup using Minikube with Calico
 - Docker installed
 - Calico CNI support
 
+## Quick Start
+
+**To set up the entire infrastructure from scratch with a single command:**
+
+```bash
+# After minikube stop && minikube delete
+chmod +x setup-infrastructure.sh
+./setup-infrastructure.sh
+```
+
+This script will:
+1. Start Minikube with Calico CNI
+2. Create the `platform-dev` namespace
+3. Apply ConfigMaps and Secrets
+4. Build Docker images
+5. Deploy all applications (PostgreSQL, Backend, Frontend)
+6. Install and configure addons (metrics-server, ingress)
+7. Deploy autoscaling and disruption budgets
+8. Apply all network policies
+9. Display final status
+
+**Note**: Make sure you have the ConfigMaps and Secrets files (`backend-config-dev.yaml` and `postgres-secret.yaml`) in the `config/` directory before running the script.
+
 ## Step-by-Step Setup Guide
 
 ### Step 1: Start Minikube with Calico CNI
