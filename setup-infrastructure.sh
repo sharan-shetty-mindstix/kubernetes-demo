@@ -211,6 +211,12 @@ kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n obse
 }
 echo ""
 
+# Apply ServiceMonitor for backend metrics
+echo "Applying ServiceMonitor for backend metrics..."
+kubectl apply -f "$SCRIPT_DIR/k8s/observability/backend-servicemonitor.yaml"
+echo "✓ ServiceMonitor applied"
+echo ""
+
 # Display observability access information
 echo "Observability Stack Access:"
 echo "-------------------------"

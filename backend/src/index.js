@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const routes = require("./routes");
 const { Pool } = require("pg");
+const { client, httpRequestDuration } = require("./metrics");
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -19,6 +20,18 @@ app.use(cors({
 
 app.use(express.json());
 
+app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer();
+  res.on("finish", () => {
+    end({
+      method: req.method,
+      route: req.route?.path || req.path,
+      status: res.statusCode,
+    });
+  });
+  next();
+});
+
 let server;
 let isShuttingDown = false;
 
@@ -26,18 +39,10 @@ console.log("App environment:", process.env.APP_ENV);
 console.log("Log level:", process.env.LOG_LEVEL);
 console.log("Async worker enabled:", process.env.FEATURE_ASYNC_WORKER);
 
-let requestCount = 0;
-
-// Minimal metrics endpoint
-
-app.use((req, res, next) => {
-  requestCount++;
-  next();
-});
-
-app.get("/metrics", (req, res) => {
-  res.set("Content-Type", "text/plain");
-  res.send(`backend_requests_total ${requestCount}\n`);
+// Metrics endpoint
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", client.register.contentType);
+  res.end(await client.register.metrics());
 });
 
 app.get("/api/db-health", async (req, res) => {

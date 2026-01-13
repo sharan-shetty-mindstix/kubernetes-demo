@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: backend-service
   namespace: platform-dev
+  labels:
+    app: backend
 spec:
   type: ClusterIP
   selector:
