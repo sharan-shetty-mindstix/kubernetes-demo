@@ -44,18 +44,18 @@ echo ""
 
 # Step 3: Apply ConfigMaps and Secrets
 echo "Step 3: Applying ConfigMaps and Secrets..."
-if [ -f "$SCRIPT_DIR/config/backend-config-dev.yaml" ]; then
-    kubectl apply -f "$SCRIPT_DIR/config/backend-config-dev.yaml" -n "$NAMESPACE"
+if [ -f "$SCRIPT_DIR/k8s/config/backend-config-dev.yaml" ]; then
+    kubectl apply -f "$SCRIPT_DIR/k8s/config/backend-config-dev.yaml" -n "$NAMESPACE"
     echo "✓ Backend ConfigMap applied"
 else
-    echo "⚠ Warning: backend-config-dev.yaml not found in config/ directory"
+    echo "⚠ Warning: backend-config-dev.yaml not found in k8s/config/ directory"
 fi
 
-if [ -f "$SCRIPT_DIR/config/postgres-secret.yaml" ]; then
-    kubectl apply -f "$SCRIPT_DIR/config/postgres-secret.yaml" -n "$NAMESPACE"
+if [ -f "$SCRIPT_DIR/k8s/config/postgres-secret.yaml" ]; then
+    kubectl apply -f "$SCRIPT_DIR/k8s/config/postgres-secret.yaml" -n "$NAMESPACE"
     echo "✓ PostgreSQL Secret applied"
 else
-    echo "⚠ Warning: postgres-secret.yaml not found in config/ directory"
+    echo "⚠ Warning: postgres-secret.yaml not found in k8s/config/ directory"
 fi
 echo ""
 
@@ -159,6 +159,69 @@ else
 fi
 echo ""
 
+# Step 12: Setup Observability
+echo "Step 12: Setting up observability stack..."
+echo "Creating observability namespace..."
+kubectl apply -f "$SCRIPT_DIR/k8s/namespaces/observability.yaml"
+echo "✓ Observability namespace created"
+echo ""
+
+# Install Helm if not already installed
+if ! command -v helm &> /dev/null; then
+    echo "Installing Helm..."
+    curl -fsSL -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+    chmod 700 /tmp/get_helm.sh
+    /tmp/get_helm.sh
+    rm /tmp/get_helm.sh
+    echo "✓ Helm installed"
+else
+    echo "✓ Helm is already installed"
+fi
+echo ""
+
+# Add Prometheus Community Helm repository
+echo "Adding Prometheus Community Helm repository..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || {
+    echo "⚠ Warning: Failed to add Prometheus Helm repo (may already exist)"
+}
+helm repo update
+echo "✓ Helm repositories updated"
+echo ""
+
+# Install kube-prometheus-stack (Prometheus + Grafana)
+echo "Installing kube-prometheus-stack (Prometheus + Grafana)..."
+helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace observability \
+  --create-namespace \
+  --set prometheus.prometheusSpec.retention=30d \
+  --set grafana.adminPassword=admin \
+  --wait --timeout=10m || {
+    echo "⚠ Warning: kube-prometheus-stack installation may have issues, but continuing..."
+}
+echo "✓ Observability stack deployed"
+echo ""
+
+# Wait for Prometheus and Grafana to be ready
+echo "Waiting for observability pods to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n observability --timeout=300s || {
+    echo "⚠ Warning: Prometheus pods may not be fully ready yet"
+}
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n observability --timeout=300s || {
+    echo "⚠ Warning: Grafana pods may not be fully ready yet"
+}
+echo ""
+
+# Display observability access information
+echo "Observability Stack Access:"
+echo "-------------------------"
+echo "Grafana:"
+echo "  kubectl port-forward -n observability service/prometheus-grafana 3000:80"
+echo "  Default credentials: admin / admin"
+echo ""
+echo "Prometheus:"
+echo "  kubectl port-forward -n observability service/prometheus-kube-prometheus-prometheus 9090:9090"
+echo ""
+
 # Final Status
 echo "================================================"
 echo "Infrastructure Setup Complete!"
@@ -166,6 +229,7 @@ echo "================================================"
 echo ""
 echo "Current Status:"
 echo "---------------"
+echo "Platform Dev Namespace:"
 kubectl get pods -n "$NAMESPACE"
 echo ""
 kubectl get services -n "$NAMESPACE"
@@ -173,6 +237,11 @@ echo ""
 kubectl get ingress -n "$NAMESPACE"
 echo ""
 kubectl get networkpolicies -n "$NAMESPACE"
+echo ""
+echo "Observability Namespace:"
+kubectl get pods -n observability
+echo ""
+kubectl get services -n observability
 echo ""
 
 # Get minikube IP for ingress

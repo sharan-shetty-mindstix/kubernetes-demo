@@ -35,7 +35,8 @@ This script will:
 6. Install and configure addons (metrics-server, ingress)
 7. Deploy autoscaling and disruption budgets
 8. Apply all network policies
-9. Display final status
+9. Set up observability stack (Prometheus + Grafana)
+10. Display final status
 
 **Note**: Make sure you have the ConfigMaps and Secrets files (`backend-config-dev.yaml` and `postgres-secret.yaml`) in the `config/` directory before running the script.
 
@@ -238,6 +239,43 @@ kubectl get ingress -n platform-dev
 curl http://frontend.local/api/healthz
 ```
 
+## Observability Stack
+
+The infrastructure includes a complete observability stack deployed in the `observability` namespace:
+
+- **Prometheus**: Metrics collection and alerting
+- **Grafana**: Visualization and dashboards
+- **AlertManager**: Alert management
+
+### Accessing Observability Tools
+
+**Grafana:**
+```bash
+# Port-forward to access Grafana UI
+kubectl port-forward -n observability service/prometheus-grafana 3000:80
+
+# Access at http://localhost:3000
+# Default credentials: admin / admin
+```
+
+**Prometheus:**
+```bash
+# Port-forward to access Prometheus UI
+kubectl port-forward -n observability service/prometheus-kube-prometheus-prometheus 9090:9090
+
+# Access at http://localhost:9090
+```
+
+### Viewing Observability Resources
+
+```bash
+# Check observability pods
+kubectl get pods -n observability
+
+# Check observability services
+kubectl get services -n observability
+```
+
 ## Network Policy Architecture
 
 The network policies implement a **zero-trust network model** where:
@@ -313,8 +351,9 @@ kubernetes-demo/
 │   ├── backend/          # Backend resources and network policies
 │   ├── frontend/         # Frontend resources and network policies
 │   ├── database/        # PostgreSQL resources and network policies
-│   └── namespaces/      # Namespace definitions
-├── config/               # ConfigMaps (gitignored)
+│   ├── namespaces/      # Namespace definitions (dev, staging, prod, observability)
+│   └── config/          # ConfigMaps and Secrets (gitignored)
+├── setup-infrastructure.sh  # Complete infrastructure setup script
 ├── apply-network-policies.sh  # Script to apply all network policies
 └── README.md
 ```
